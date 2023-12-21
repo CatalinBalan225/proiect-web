@@ -48,35 +48,58 @@ app.get("/test",(req,res)=>{
     })
 })
 
-app.post("/requests",(req, res)=>{
-    const q =  "INSERT INTO requests ('title', 'description', 'file') VALUE (?)";
-    const values =[
-        req.body.title,
-        req.body.description,
-        req.body.file,
-    ]
-   db.query(q,[values],(err, data)=>{
-    if(err) return res.json(err);
-    return res.json("Request created successfully");
-   });
-    
-});
+app.post("/requests", async (req, res) => {
+    const { title, description, file, professor_id } = req.body;
+  
+    try {
+     
+        const professorDetails = await axios.get(`http://localhost:8500/professors`);
+        const professorId = professorDetails.data.find((prof) => prof.id === professor_id)?.id;
+  
+     
+        const q = "INSERT INTO requests (title, description, file, professor_id, status, student_id) VALUES (?, ?, 'photo.png', ?, 'awaiting','0')";
+        const values = [title, description, file, professorId];
+        db.query(q, values, (err, data) => {
+        if (err) {
+            console.error('Error inserting request:', err);
+            return res.status(500).json({ error: "Internal Server Error" });
+          }
+        
+          return res.json("Request created successfully");
+        });
+    } catch (error) {
+      console.error('Error during request creation:', error.message);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+  
+ 
 
 app.get("/requests/:userId", (req, res) => {
     const userId = req.params.userId;
-  
-    // Assuming you have a requests table with professor_id column
-    const q = "SELECT * FROM requests WHERE professor_id = ?";
-    const values = [userId];
-  
+    const isStudent = req.query.isStudent; // Add this line to get the isStudent query parameter
+
+    let q;
+    let values;
+
+    if (isStudent === "1") {
+       
+        q = "SELECT * FROM requests";
+        values = [];
+    } else {
+       
+        q = "SELECT * FROM requests WHERE professor_id = ?";
+        values = [userId];
+    }
+
     db.query(q, values, (err, data) => {
-      if (err) {
-        return res.status(500).json({ error: "Internal Server Error" });
-      }
-  
-      return res.json(data);
+        if (err) {
+            return res.status(500).json({ error: "Internal Server Error" });
+        }
+
+        return res.json(data);
     });
-  });
+});
   
  
   app.post("/register", (req, res) => {
@@ -91,6 +114,17 @@ app.get("/requests/:userId", (req, res) => {
       }
   
       return res.json({ message: "Registration successful", user: data.insertId });
+    });
+  });
+
+  app.get("/professors", (req, res) => {
+    const q = "SELECT * FROM users WHERE is_student = 0";
+    db.query(q, (err, data) => {
+      if (err) {
+        return res.status(500).json({ error: "Internal Server Error" });
+      }
+  
+      return res.json(data);
     });
   });
   
