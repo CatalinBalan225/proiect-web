@@ -1,0 +1,70 @@
+import Requests, { RequestCreationAttributes } from "../entities/Requests";
+//import Request from "../entities/Requests";
+import { Like } from "./operators";
+import User, {UserCreationAttributes} from "../entities/Users";
+//import { Requests } from "../entities/dbConst";
+import RequestsFilterDto from "./models/requestFilterDto";
+import { where } from "sequelize";
+import db from "../dbConfig";
+
+// async function createRequests(Requests: RequestCreationAttributes) {
+//   return await Requests.create(Requests, { include: [{ model: Request, as: Requests }] });
+// }
+
+async function createRequests(Requests: RequestCreationAttributes) {
+    return await Requests.create(Requests,{include:[{model: Requests, as: Requests}]});
+  }
+
+// async function createUser(user: UserCreationAttributes) {
+//     return await User.create(user, { include: [{ model: Request, as: Requests }] });
+//   }
+
+async function getRequestsById(id: number) {
+  return await Requests.findByPk(id, { include: [Requests] });
+}
+
+async function getRequestss(RequestsFilter: RequestsFilterDto) {
+  if (!RequestsFilter.take) RequestsFilter.take = 10;
+  if (!RequestsFilter.skip) RequestsFilter.skip = 0; // Fix typo here
+
+  let whereClause: any = {};
+  if (RequestsFilter.title) whereClause.Title = { [Like]: `%${RequestsFilter.title}%` };
+  if (RequestsFilter.status) whereClause.status = { [Like]: `%${RequestsFilter.status}` };
+
+  return await Requests.findAndCountAll({
+    distinct: true,
+    where: whereClause,
+    limit: RequestsFilter.take,
+    offset: RequestsFilter.skip * RequestsFilter.take,
+  });
+}
+
+async function deleteRequests(id: number) {
+  let deleteElem = await Requests.findByPk(id);
+
+  if (!deleteElem) {
+    console.log("This element does not exist, so it cannot be deleted");
+    return;
+  }
+  return await deleteElem.destroy();
+}
+
+async function updateRequests(Requests: RequestCreationAttributes, id: number) {
+  const findRequests = await getRequestsById(Requests.Id);
+
+  if (!findRequests) {
+    console.log("This Requests does not exist");
+    return;
+  }
+
+  const t = await db.transaction();
+ 
+
+   
+
+    await t.commit();
+  } 
+   
+
+
+export { createRequests, getRequestsById, getRequestss, deleteRequests, updateRequests };
